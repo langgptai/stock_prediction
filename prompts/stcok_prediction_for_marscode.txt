@@ -1,0 +1,103 @@
+任务：创建一个完整的股票价格预测分析应用程序，包含数据获取、特征工程、模型训练和预测可视化等功能。
+
+代码组织要求：
+1. 使用函数式编程，保持代码结构清晰
+2. 所有代码放在一个文件中，约250行
+3. 使用英文注释和输出，避免中文编码问题
+4. 每个功能模块间接口统一，确保数据流转顺畅
+5. 符合Google Python代码规范
+
+具体功能模块：
+
+1. 数据获取：
+- 使用efinance库实现数据获取
+- 支持本地数据缓存功能
+- 统一中英文列名转换
+- 返回标准格式DataFrame
+
+2. 特征工程：
+- 计算移动平均线(5,10,20日)
+- 计算成交量移动平均
+- 计算动量指标
+- 计算RSI指标
+- 计算波动率
+- 计算成交量价格比
+- 处理缺失值
+
+3. 数据预处理：
+- 特征标准化
+- 训练测试集分割
+- 保持时间序列顺序
+- 数据验证
+
+4. 模型训练：
+- 使用RandomForestRegressor
+- 设置合适的模型参数
+- 提供训练过程日志
+- 返回训练好的模型
+
+5. 模型评估：
+- 计算R2分数
+- 计算MSE和RMSE
+- 计算MAE
+- 格式化输出结果
+
+6. 可视化展示：
+- 预测结果对比图
+- 特征重要性分析图
+- 使用英文标签
+- 支持图片保存
+
+函数接口规范：
+
+1. get_stock_data(stock_code: str, start_date: str, end_date: str) -> pd.DataFrame:
+   """获取股票数据"""
+
+2. create_features(df: pd.DataFrame) -> pd.DataFrame:
+   """创建技术指标特征，只保留数值列返回新变量"""
+
+3. prepare_data(df: pd.DataFrame, target_col: str, test_size: float) -> tuple:
+   """准备训练数据"""
+
+4. train_model(X_train: np.ndarray, y_train: np.ndarray) -> RandomForestRegressor:
+   """训练模型"""
+
+5. evaluate_predictions(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
+   """评估预测结果"""
+
+6. plot_predictions(dates: pd.Series, y_true: np.ndarray, y_pred: np.ndarray, stock_code: str):
+   """绘制预测结果"""
+
+7. main() -> tuple:
+   """主函数"""
+
+数据示例：
+股票名称   股票代码          日期       开盘      收盘      最高       最低       成交量           成交额    振幅   涨跌幅   涨跌额   换手率
+0    谷歌-A  GOOGL  2023-01-03   89.185   88.72   90.65   88.120  28131224  2.512678e+09  2.88  1.01  0.89  0.47
+1    谷歌-A  GOOGL  2023-01-04   89.950   87.68   90.25   86.871  34854776  3.074915e+09  3.81 -1.17 -1.04  0.58
+
+数据流转说明：
+1. get_stock_data获取原始数据
+2. create_features处理原始数据生成特征
+3. prepare_data准备训练数据
+4. train_model训练模型
+5. evaluate_predictions评估结果
+6. plot_predictions可视化
+
+关键要求：
+1. 所有函数都要有完整的文档字符串
+2. 包含异常处理机制
+3. 提供进度提示信息
+4. 保持代码简洁易读
+5. 避免复杂的依赖关系
+
+完整示例用法：
+```python
+if __name__ == "__main__":
+    # 设置股票代码和日期范围
+    stock_code = 'GOOGL'
+    start_date = '20230101'
+    end_date = '20241030'
+    
+    # 运行主程序
+    model, scaler, feature_cols = main()
