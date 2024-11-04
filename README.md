@@ -80,11 +80,6 @@ python stock_prediction.py
 - 自动数据格式转换
 
 ### 特征工程 (create_features)
-- 基础滞后特征
-- 移动平均线指标
-- 波动率指标
-- 价格动量指标
-- RSI指标
 - 成交量相关特征
 
 ### 数据预处理 (prepare_data)
