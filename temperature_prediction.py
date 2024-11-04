@@ -16,7 +16,7 @@ plt.rcParams['axes.unicode_minus'] = False
 
 def get_weather_data():
     """获取北京气温数据"""
-    file_path = 'beijing_weather.csv'
+    file_path = 'results/beijing_weather.csv'
     
     if os.path.exists(file_path):
         print("从本地加载天气数据...")
@@ -54,41 +54,51 @@ def create_features(df):
     df['day'] = df['date'].dt.day
     df['dayofweek'] = df['date'].dt.dayofweek
     df['dayofyear'] = df['date'].dt.dayofyear
-    
-    # 滞后特征
-    for i in range(1, 8):  # 使用前7天的数据
-        df[f'tavg_lag_{i}'] = df['tavg'].shift(i)
-        df[f'tmin_lag_{i}'] = df['tmin'].shift(i)
-        df[f'tmax_lag_{i}'] = df['tmax'].shift(i)
-    
-    # 移动平均
-    for window in [7, 14, 30]:
-        df[f'tavg_ma_{window}'] = df['tavg'].rolling(window=window).mean()
-        df[f'tmin_ma_{window}'] = df['tmin'].rolling(window=window).mean()
-        df[f'tmax_ma_{window}'] = df['tmax'].rolling(window=window).mean()
-    
     # 温度范围
     df['temp_range'] = df['tmax'] - df['tmin']
     
     return df.dropna()
 
 def prepare_data(df, target_col='tavg'):
-    """准备训练和测试数据"""
+    """
+    准备训练和测试数据，使用当天的特征预测下一天的目标值
+    
+    Args:
+        df (pd.DataFrame): 输入数据框
+        target_col (str): 目标列名，默认为'tavg'
+    
+    Returns:
+        tuple: (X_train_scaled, X_test_scaled, y_train, y_test, test_dates, feature_cols)
+    """
     df = create_features(df)
     
+    # 创建目标值的时间位移版本（前移一天）
+    df['target_next'] = df[target_col].shift(-1)
+    
     # 分离2024年7-10月的数据作为测试集
+    # 注意：由于我们需要预测下一天，所以测试集的结束日期要提前一天
     train_mask = (df['date'] < '2024-07-01')
-    test_mask = (df['date'] >= '2024-07-01') & (df['date'] <= '2024-10-31')
+    test_mask = (df['date'] >= '2024-07-01') & (df['date'] < '2024-10-31')  # 注意这里改为 < 10-31
     
     # 分离特征
-    feature_cols = [col for col in df.columns if col not in [target_col, 'date']]
+    feature_cols = [col for col in df.columns if col not in [target_col, 'target_next', 'date']]
     
     # 准备训练集和测试集
     X_train = df[train_mask][feature_cols]
     X_test = df[test_mask][feature_cols]
-    y_train = df[train_mask][target_col]
-    y_test = df[test_mask][target_col]
+    y_train = df[train_mask]['target_next']  # 使用位移后的目标值
+    y_test = df[test_mask]['target_next']    # 使用位移后的目标值
     test_dates = df[test_mask]['date']
+    
+    # 移除含有 NaN 的行（最后一天会因为位移产生 NaN）
+    valid_train_mask = ~y_train.isna()
+    X_train = X_train[valid_train_mask]
+    y_train = y_train[valid_train_mask]
+    
+    valid_test_mask = ~y_test.isna()
+    X_test = X_test[valid_test_mask]
+    y_test = y_test[valid_test_mask]
+    test_dates = test_dates[valid_test_mask]
     
     # 标准化
     scaler = StandardScaler()
@@ -111,24 +121,7 @@ def plot_predictions(dates, y_test, y_pred):
     plt.xticks(rotation=45)
     plt.tight_layout()
     
-    plt.savefig('temperature_prediction.png', dpi=300, bbox_inches='tight')
-    return plt.gcf()
-
-def plot_feature_importance(feature_names, importance, top_n=10):
-    """绘制特征重要性"""
-    feature_imp = pd.DataFrame({'feature': feature_names, 'importance': importance})
-    feature_imp = feature_imp.sort_values('importance', ascending=False).head(top_n)
-    
-    plt.figure(figsize=(12, 6))
-    plt.bar(range(top_n), feature_imp['importance'])
-    plt.xticks(range(top_n), feature_imp['feature'], rotation=45, ha='right')
-    
-    plt.title('特征重要性排序', fontproperties=custom_font, fontsize=14)
-    plt.xlabel('特征', fontproperties=custom_font)
-    plt.ylabel('重要性', fontproperties=custom_font)
-    plt.tight_layout()
-    
-    plt.savefig('feature_importance.png', dpi=300, bbox_inches='tight')
+    plt.savefig('results/temperature_prediction.png', dpi=300, bbox_inches='tight')
     return plt.gcf()
 
 def main():
@@ -166,17 +159,14 @@ def main():
         
         # 5. 绘制预测图
         plot_predictions(test_dates, y_test, y_pred)
-        
-        # 6. 绘制特征重要性
-        plot_feature_importance(feature_cols, model.feature_importances_)
-        
-        # 7. 输出预测结果
+
+        # 6. 输出预测结果
         results_df = pd.DataFrame({
             '日期': test_dates,
             '实际气温': y_test,
             '预测气温': y_pred
         })
-        results_df.to_csv('temperature_predictions.csv', index=False, encoding='utf-8-sig')
+        results_df.to_csv('results/temperature_predictions.csv', index=False, encoding='utf-8-sig')
         
         plt.show()
         

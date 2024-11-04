@@ -18,7 +18,7 @@ plt.rcParams['axes.unicode_minus'] = False
 
 def get_stock_data(stock_code='GOOGL', start_date='20230101', end_date='20241130'):
     """获取股票数据"""
-    file_path = f'{stock_code}_history.csv'
+    file_path = f'results/{stock_code}_history.csv'
     
     if os.path.exists(file_path):
         print(f"从本地加载{stock_code}的历史数据...")
@@ -43,34 +43,6 @@ def create_features(df):
     for col in numeric_cols:
         df[col] = pd.to_numeric(df[col], errors='coerce')
     
-    # 基础滞后特征
-    price_cols = ['收盘', '开盘', '最高', '最低']
-    for col in price_cols:
-        for i in range(1, 6):
-            df[f'{col}_lag_{i}'] = df[col].shift(i)
-    
-    # 移动平均线
-    for window in [5, 10, 20]:
-        df[f'MA_{window}'] = df['收盘'].rolling(window=window).mean()
-        df[f'volume_MA_{window}'] = df['成交量'].rolling(window=window).mean()
-    
-    # 波动率指标
-    df['volatility_5'] = df['收盘'].rolling(window=5).std()
-    
-    # 价格动量指标
-    for period in [5, 10, 20]:
-        df[f'momentum_{period}'] = df['收盘'].pct_change(period)
-    
-    # 相对强弱指标 (RSI)
-    def calculate_rsi(data, periods=14):
-        delta = data.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=periods).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=periods).mean()
-        rs = gain / loss
-        return 100 - (100 / (1 + rs))
-    
-    df['RSI_14'] = calculate_rsi(df['收盘'])
-    
     # 成交量相关特征
     df['volume_price_ratio'] = df['成交量'] / df['收盘']
     
@@ -85,9 +57,10 @@ def prepare_data(df, target_col='收盘', test_size=0.2):
     y = df[target_col].astype(float)
     
     split_idx = int(len(df) * (1 - test_size))
-    X_train, X_test = X[:split_idx], X[split_idx:]
-    y_train, y_test = y[:split_idx], y[split_idx:]
-    
+    X_train, X_test = X[:split_idx], X[split_idx:-1]
+    y_train, y_test = y[1:split_idx+1], y[split_idx+1:]
+    # y_test[-1:] = 300
+    #import ipdb; ipdb.set_trace()    
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
@@ -188,7 +161,7 @@ def plot_feature_importance(feature_columns, importance, top_n=10):
     plt.tight_layout()
     
     # 保存图片
-    plt.savefig('feature_importance.png', dpi=300, bbox_inches='tight')
+    plt.savefig('results/feature_importance.png', dpi=300, bbox_inches='tight')
     
     return plt.gcf()
 
@@ -200,7 +173,7 @@ def main():
         
         # 1. 获取数据
         # 提示用户输入股票代码
-        stock_code = input("请输入股票代码（例如：GOOGL）：")
+        stock_code = input("请输入股票代码（例如：MSFT）：")
         # 提示用户输入开始日期
         start_date = input("请输入开始日期（YYYYMMDD）：")
         # 提示用户输入结束日期
